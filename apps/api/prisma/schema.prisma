@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+}
+
+enum OtpPurpose {
+  REGISTER
+  RESET_PASSWORD
+}
+
+enum IdentityProvider {
+  GOOGLE
+  FACEBOOK
+}
+
+enum RoleCode {
+  USER
+  ORGANIZER
+  COLLECTOR
+  ADMIN
+}
+
+model User {
+  id              String          @id @default(uuid()) @db.Uuid
+  emailNormalized String          @unique @db.VarChar(254)
+  // Null is reserved for future provider-only accounts. Never store plaintext.
+  passwordHash    String?         @db.VarChar(255)
+  status          AccountStatus   @default(PENDING_VERIFICATION)
+  verifiedAt      DateTime?       @db.Timestamptz(3)
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime        @default(now()) @updatedAt @db.Timestamptz(3)
+  profile         Profile?
+  preference      UserPreference?
+  interests       UserInterest[]
+  identities      AuthIdentity[]
+  sessions        Session[]
+  challenges      OtpChallenge[]
+  resetGrants     ResetGrant[]
+  roles           UserRole[]
+  media           Media[]
+  auditLogs       AuditLog[]
+
+  @@index([status, createdAt])
+}
+
+model Profile {
+  userId      String    @id @db.Uuid
+  displayName String    @db.VarChar(100)
+  birthDate   DateTime? @db.Date
+  countryCode String    @default("VN") @db.Char(2)
+  avatarId    String?   @unique @db.Uuid
+  updatedAt   DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatar      Media?    @relation(fields: [avatarId], references: [id], onDelete: SetNull)
+}
+
+model UserPreference {
+  userId            String   @id @db.Uuid
+  timezone          String   @default("Asia/Ho_Chi_Minh") @db.VarChar(64)
+  locale            String   @default("vi") @db.VarChar(16)
+  soundEnabled      Boolean  @default(true)
+  vibrationEnabled  Boolean  @default(true)
+  remindersEnabled  Boolean  @default(false)
+  goal              String?  @db.VarChar(200)
+  onboardingVersion String?  @db.VarChar(32)
+  updatedAt         DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserInterest {
+  userId String @db.Uuid
+  key    String @db.VarChar(64)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, key])
+}
+
+// Provider data foundation only; Task 3 does not enable OAuth endpoints.
+model AuthIdentity {
+  id              String           @id @default(uuid()) @db.Uuid
+  userId          String           @db.Uuid
+  provider        IdentityProvider
+  providerSubject String           @db.VarChar(255)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSubject])
+  @@index([userId])
+}
+
+// The session ID is also the refresh-token family ID. Retain used credentials
+// for later replay detection; actual rotation/revocation belongs to the auth task.
+model Session {
+  id          String              @id @default(uuid()) @db.Uuid
+  userId      String              @db.Uuid
+  deviceName  String              @db.VarChar(120)
+  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+  lastSeenAt  DateTime            @default(now()) @db.Timestamptz(3)
+  expiresAt   DateTime            @db.Timestamptz(3)
+  revokedAt   DateTime?           @db.Timestamptz(3)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentials RefreshCredential[]
+
+  @@index([userId, revokedAt, createdAt])
+  @@index([expiresAt])
+}
+
+model RefreshCredential {
+  id         String    @id @default(uuid()) @db.Uuid
+  sessionId  String    @db.Uuid
+  tokenHash  String    @unique @db.Char(64)
+  generation Int       @default(0)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  expiresAt  DateTime  @db.Timestamptz(3)
+  usedAt     DateTime? @db.Timestamptz(3)
+  session    Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, generation])
+  @@index([expiresAt])
+}
+
+model OtpChallenge {
+  id              String       @id @default(uuid()) @db.Uuid
+  userId          String?      @db.Uuid
+  emailNormalized String       @db.VarChar(254)
+  purpose         OtpPurpose
+  // HMAC/digest only. Sending, rate limits and verification are later tasks.
+  codeHash        String       @db.Char(64)
+  attempts        Int          @default(0)
+  maxAttempts     Int          @default(5)
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+  sentAt          DateTime     @default(now()) @db.Timestamptz(3)
+  expiresAt       DateTime     @db.Timestamptz(3)
+  consumedAt      DateTime?    @db.Timestamptz(3)
+  invalidatedAt   DateTime?    @db.Timestamptz(3)
+  user            User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resetGrants     ResetGrant[]
+
+  // Enables a database FK that binds a reset grant to its owner and purpose.
+  @@unique([id, userId, purpose])
+  @@index([emailNormalized, purpose, sentAt])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ResetGrant {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @db.Uuid
+  challengeId String       @unique @db.Uuid
+  purpose     OtpPurpose   @default(RESET_PASSWORD)
+  tokenHash   String       @unique @db.Char(64)
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  expiresAt   DateTime     @db.Timestamptz(3)
+  usedAt      DateTime?    @db.Timestamptz(3)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge   OtpChallenge @relation(fields: [challengeId, userId, purpose], references: [id, userId, purpose], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Role {
+  code  RoleCode   @id
+  name  String     @db.VarChar(80)
+  users UserRole[]
+}
+
+model UserRole {
+  userId    String   @db.Uuid
+  roleCode  RoleCode
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleCode], references: [code], onDelete: Restrict)
+
+  @@id([userId, roleCode])
+  @@index([roleCode])
+}
+
+model Media {
+  id         String   @id @default(uuid()) @db.Uuid
+  ownerId    String   @db.Uuid
+  storageKey String   @unique @db.VarChar(512)
+  mimeType   String   @db.VarChar(100)
+  sizeBytes  Int
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  owner      User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  profile    Profile?
+
+  @@index([ownerId, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String   @db.VarChar(120)
+  targetType String?  @db.VarChar(80)
+  targetId   String?  @db.VarChar(100)
+  // Store non-secret metadata only. Never include passwords, OTPs or tokens.
+  metadata   Json?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}

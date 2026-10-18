@@ -1,0 +1,35 @@
+{
+  "name": "greensteps",
+  "version": "0.4.0-task4",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "setup:local": "node scripts/setup.mjs",
+    "db:generate": "npm run db:generate -w @greensteps/api",
+    "dev:api": "npm run dev -w @greensteps/api",
+    "dev:mobile": "npm run start -w @greensteps/mobile",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint apps --no-warn-ignored && node scripts/check-native-text.mjs",
+    "build": "npm run build -w @greensteps/api",
+    "build:mobile": "npm run export -w @greensteps/mobile",
+    "build:android": "npm run export:android -w @greensteps/mobile",
+    "test": "npm run test -w @greensteps/api",
+    "db:validate": "npm run db:validate -w @greensteps/api",
+    "db:deploy": "npm run db:deploy -w @greensteps/api",
+    "db:status": "npm run db:status -w @greensteps/api",
+    "db:seed": "npm run db:seed -w @greensteps/api"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.10",
+    "@electric-sql/pglite-socket": "0.2.13",
+    "eslint": "^9.39.4",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.57.1"
+  }
+}
