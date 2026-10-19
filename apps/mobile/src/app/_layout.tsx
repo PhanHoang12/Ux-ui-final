@@ -7,6 +7,7 @@ import { Montserrat_500Medium } from "@expo-google-fonts/montserrat/500Medium";
 import { Montserrat_600SemiBold } from "@expo-google-fonts/montserrat/600SemiBold";
 import { Montserrat_700Bold } from "@expo-google-fonts/montserrat/700Bold";
 import { color } from "../theme/tokens";
+import { SessionProvider } from "../lib/session";
 export default function Root() {
   const [loaded, error] = useFonts({
     Montserrat_400Regular,
@@ -17,13 +18,15 @@ export default function Root() {
   if (!loaded && !error) return null;
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: color.bg },
-        }}
-      />
+      <SessionProvider>
+        <StatusBar style="dark" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: color.bg },
+          }}
+        />
+      </SessionProvider>
     </SafeAreaProvider>
   );
 }

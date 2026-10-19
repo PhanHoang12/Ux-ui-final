@@ -36,6 +36,7 @@ model User {
   // Null is reserved for future provider-only accounts. Never store plaintext.
   passwordHash    String?         @db.VarChar(255)
   status          AccountStatus   @default(PENDING_VERIFICATION)
+  termsAcceptedAt DateTime?       @db.Timestamptz(3)
   verifiedAt      DateTime?       @db.Timestamptz(3)
   createdAt       DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime        @default(now()) @updatedAt @db.Timestamptz(3)
@@ -103,6 +104,8 @@ model AuthIdentity {
 model Session {
   id          String              @id @default(uuid()) @db.Uuid
   userId      String              @db.Uuid
+  accessTokenHash String? @unique @db.Char(64)
+  accessExpiresAt DateTime? @db.Timestamptz(3)
   deviceName  String              @db.VarChar(120)
   createdAt   DateTime            @default(now()) @db.Timestamptz(3)
   lastSeenAt  DateTime            @default(now()) @db.Timestamptz(3)
@@ -212,4 +215,12 @@ model AuditLog {
 
   @@index([actorId, createdAt])
   @@index([action, createdAt])
+}
+
+// Persistent fixed-window request limits; keys are HMAC digests, never raw emails/IPs.
+model AuthThrottle {
+  key String @id @db.Char(64)
+  count Int @default(1)
+  expiresAt DateTime @db.Timestamptz(3)
+  @@index([expiresAt])
 }

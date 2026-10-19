@@ -8,19 +8,14 @@ import { INestApplication } from "@nestjs/common";
 import { ConnectionModule } from "../src/connection.module";
 import { Database } from "../src/db";
 import { Errors } from "../src/common";
-import { readFileSync } from "node:fs";
+import { applyMigrations } from "./migrations";
 let app: INestApplication,
   lite: PGlite,
   socket: PGLiteSocketServer,
   base: string;
 before(async () => {
   lite = await PGlite.create();
-  await lite.exec(
-    readFileSync(
-      "prisma/migrations/202610180001_task3_identity/migration.sql",
-      "utf8",
-    ),
-  );
+  await applyMigrations(lite);
   socket = new PGLiteSocketServer({
     db: lite,
     host: "127.0.0.1",
@@ -50,13 +45,13 @@ test("Task 2: HTTP API kiểm tra kết nối database qua Prisma (PGlite)", asy
   assert.equal(data.database, "connected");
   assert.ok(Date.parse(data.checkedAt));
 });
-test("Task 3: migration tạo đủ 13 bảng nền, health vẫn hoạt động", async () => {
+test("Task 5: migration tạo đủ 14 bảng nền, health vẫn hoạt động", async () => {
   const rows = await app.get(Database).$queryRaw<
     { count: bigint }[]
   >`SELECT count(*) FROM information_schema.tables WHERE table_schema='public'`;
-  assert.equal(Number(rows[0]?.count), 13);
+  assert.equal(Number(rows[0]?.count), 14);
 });
-test("Task 2: không mở endpoint tài khoản của các task chưa duyệt", async () => {
+test("Module health không tự đăng ký controller tài khoản", async () => {
   const res = await fetch(base + "/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

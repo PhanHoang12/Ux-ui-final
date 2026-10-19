@@ -28,8 +28,32 @@ export class Errors implements ExceptionFilter {
       .status(status)
       .json({
         error: {
-          code: body?.code ?? (status === 404 ? "NOT_FOUND" : "REQUEST_FAILED"),
-          message: body?.message ?? "Không thể xử lý yêu cầu.",
+          code:
+            body?.code ??
+            (error instanceof ZodError
+              ? "VALIDATION_ERROR"
+              : status === 404
+                ? "NOT_FOUND"
+                : "REQUEST_FAILED"),
+          message:
+            body?.message ??
+            (error instanceof ZodError
+              ? error.issues[0]?.message
+              : undefined) ??
+            "Không thể xử lý yêu cầu.",
+          ...(error instanceof ZodError
+            ? {
+                fields: Object.fromEntries(
+                  error.issues.map((issue) => [
+                    issue.path.join("."),
+                    issue.message,
+                  ]),
+                ),
+              }
+            : {}),
+          ...(typeof body?.retryAfterSeconds === "number"
+            ? { retryAfterSeconds: body.retryAfterSeconds }
+            : {}),
         },
         requestId: randomUUID(),
       });

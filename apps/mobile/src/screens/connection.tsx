@@ -44,7 +44,7 @@ export function Connection() {
       <LinkText
         title="Về bộ giao diện"
         onPress={() =>
-          router.canGoBack() ? router.back() : router.replace("/")
+          router.canGoBack() ? router.back() : router.replace("/ui")
         }
       />
       <T style={{ color: color.primary }}>GREENSTEPS · KẾT NỐI</T>

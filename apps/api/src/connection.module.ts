@@ -27,5 +27,6 @@ export class ConnectionController {
 @Module({
   controllers: [ConnectionController],
   providers: [{ provide: CONFIG, useFactory: readConnectionConfig }, Database],
+  exports: [CONFIG, Database],
 })
 export class ConnectionModule {}

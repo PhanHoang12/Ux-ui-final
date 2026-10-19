@@ -56,7 +56,13 @@ export function Art({
     />
   );
 }
-export function Screen({ children }: { children: ReactNode }) {
+export function Screen({
+  children,
+  padding = 24,
+}: {
+  children: ReactNode;
+  padding?: number;
+}) {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
@@ -68,7 +74,7 @@ export function Screen({ children }: { children: ReactNode }) {
           keyboardDismissMode="on-drag"
           contentContainerStyle={styles.scroll}
         >
-          <View style={styles.content}>{children}</View>
+          <View style={[styles.content, { padding }]}>{children}</View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -113,7 +119,9 @@ export function Button({
     ? color.disabledText
     : variant === "primary"
       ? color.white
-      : color.primary;
+      : variant === "secondary"
+        ? color.text
+        : color.primary;
   return (
     <Pressable
       {...props}
@@ -300,11 +308,13 @@ export function OTPInput({
   onChange,
   error,
   disabled = false,
+  large = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   error?: string;
   disabled?: boolean;
+  large?: boolean;
 }) {
   const ref = useRef<TextInput>(null),
     [focused, setFocused] = useState(false);
@@ -312,12 +322,17 @@ export function OTPInput({
     <View style={{ gap: space.sm }}>
       <T variant="label">Mã xác thực</T>
       <View style={styles.otpWrap}>
-        <View pointerEvents="none" accessible={false} style={styles.otpCells}>
+        <View
+          pointerEvents="none"
+          accessible={false}
+          style={[styles.otpCells, large && { gap: 10 }]}
+        >
           {Array.from({ length: 6 }, (_, index) => (
             <View
               key={index}
               style={[
                 styles.otpCell,
+                large && { minHeight: 66 },
                 focused &&
                   Math.min(value.length, 5) === index &&
                   styles.inputFocus,
@@ -325,7 +340,16 @@ export function OTPInput({
                 disabled && styles.inputDisabled,
               ]}
             >
-              <T variant="title">{value[index] ?? ""}</T>
+              <T
+                variant="title"
+                style={
+                  large
+                    ? { fontSize: 25, lineHeight: 35, fontFamily: font.semi }
+                    : undefined
+                }
+              >
+                {value[index] ?? (large ? "—" : "")}
+              </T>
             </View>
           ))}
         </View>

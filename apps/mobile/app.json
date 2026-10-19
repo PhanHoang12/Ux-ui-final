@@ -2,7 +2,7 @@
   "expo": {
     "name": "GreenSteps",
     "slug": "greensteps",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "scheme": "greensteps",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -10,6 +10,10 @@
       "bundler": "metro",
       "output": "single"
     },
-    "plugins": ["expo-router", "expo-image"]
+    "plugins": [
+      "expo-router",
+      "expo-image",
+      "expo-secure-store"
+    ]
   }
 }

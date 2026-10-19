@@ -1,4 +1,9 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  appendFileSync,
+} from "node:fs";
 import { randomBytes } from "node:crypto";
 const password = existsSync(".env")
   ? readFileSync(".env", "utf8").match(/^POSTGRES_PASSWORD=(.+)$/m)?.[1]
@@ -22,3 +27,13 @@ if (!existsSync("apps/mobile/.env"))
 console.log(
   "Đã tạo cấu hình local. Trên điện thoại, thay localhost trong apps/mobile/.env bằng IP LAN của máy chạy API.",
 );
+
+// Append only: preserve the existing Neon URL and all user SMTP settings.
+if (!/^AUTH_SECRET=.+/m.test(readFileSync("apps/api/.env", "utf8"))) {
+  appendFileSync(
+    "apps/api/.env",
+    "\nAUTH_SECRET=" + randomBytes(32).toString("hex") + "\n",
+    { mode: 0o600 },
+  );
+  console.log("Đã tạo AUTH_SECRET cục bộ. Không đưa .env lên GitHub.");
+}
